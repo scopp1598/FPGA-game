@@ -1,0 +1,314 @@
+module gagala (
+	//input
+	clk,
+	//output
+	VGA_CLK, VGA_HS, VGA_VS, VGA_BLANK_N, VGA_SYNC_N, VGA_R, VGA_G, VGA_B,
+	
+	//DELETE ME LATER
+	out, sw0
+	);
+	
+	//DELETE ME LATER
+	input sw0;
+	reg [15:0] sin, cosine;
+	output [27:0] out;
+	
+	input clk;
+	
+	///////// VGA /////////
+	output VGA_CLK, VGA_HS, VGA_VS, VGA_BLANK_N, VGA_SYNC_N;
+	output [ 7: 0] VGA_R, VGA_G, VGA_B;
+
+	//	For VGA Controller
+	reg	[9:0]	mRed;
+	reg	[9:0]	mGreen;
+	reg	[9:0]	mBlue;
+	wire	[10:0]	VGA_X;
+	wire	[10:0]	VGA_Y;
+	wire			VGA_Read;	//	VGA data request
+	wire			DLY2;
+
+	//wire			m1VGA_Read;	//	Read odd field
+	//wire			m2VGA_Read;	//	Read even field
+
+	//	VGA Controller
+	wire [9:0] vga_r10;
+	wire [9:0] vga_g10;
+	wire [9:0] vga_b10;
+	assign VGA_R = vga_r10[9:2];
+	assign VGA_G = vga_g10[9:2];
+	assign VGA_B = vga_b10[9:2];
+	
+	///CORDIC STUFF///
+	wire [15:0] cosine;
+	wire [15:0] sine;
+	
+	///Black Box Variables///
+	integer bbx1;
+	integer bbx2;
+	integer bby1;
+	integer bby2;
+	integer bbarc;	// draws a curve above the rectangle a cooler appearance
+	integer bbmovx;	//To be used for horizontal movement later
+	integer bbmovy;	//To be used for vertical movement later
+	integer bbbarleng;//Black box barrel length
+	integer bbbarslope;//black box barrel slope
+	reg [9:0] bbr;
+	reg [9:0] bbg;
+	reg [9:0] bbb;
+	
+	///White Box///
+	///Black Box Variables///
+	integer wbx1;
+	integer wbx2;
+	integer wby1;
+	integer wby2;
+	integer wbarc;	// draws a curve above the rectangle a cooler appearance
+	integer wbmovx;	//To be used for horizontal movement later
+	integer wbmovy;	//To be used for vertical movement later
+	integer wbbarleng;//Black box barrel length
+	integer wbbarslope;//black box barrel slope
+	reg [9:0] wbr;
+	reg [9:0] wbg;
+	reg [9:0] wbb;
+	
+	initial begin
+		dir = 1;
+	end
+	
+	integer y1, y2, timer, count, dir, arr_r, arr_l, i, arr_b1, arr_x;
+	reg clk25;
+	
+	always @( posedge clk ) begin
+
+		clk25 = !clk25;
+		timer = timer + 1;
+		
+		///Background///
+		mRed = 10'b0000000000;
+		mGreen = 10'b1100100000;
+		mBlue = 10'b1111111111;
+		
+		///black box///
+		bbx1 = 100;						//Black Box x1
+		bbx2 = 150;						//Black Box x2
+		bby1 = 100;						//Black Box y1
+		bby2 = 125;						//Black Box y2
+		bbarc = (VGA_X-(bbx2-((bbx2-bbx1)/2)))**2 + (VGA_Y-bby1)**2; //equation for 180 degree arc
+		bbr = 10'b0000000000;		//Black Box mRed
+		bbg = 10'b0000000000;		//Black Box mGreen
+		bbb = 10'b0000000000;		//Black Box mBlue
+		bbbarleng = 100;					//Black Box barrel length
+		bbbarslope = -1;					//black box barrel slope, to be determined by some input
+		
+		///Whtie Box///
+		wbx1 = 540;						//Black Box x1
+		wbx2 = 590;						//Black Box x2
+		wby1 = 100;						//Black Box y1
+		wby2 = 125;						//Black Box y2
+		wbarc = (VGA_X-(wbx2-((wbx2-wbx1)/2)))**2 + (VGA_Y-wby1)**2; //equation for 180 degree arc
+		wbr = 10'b1111111111;		//Black Box mRed
+		wbg = 10'b1111111111;		//Black Box mGreen
+		wbb = 10'b1111111111;		//Black Box mBlue
+		wbbarleng = 100;					//Black Box barrel length
+		wbbarslope = -1;					//black box barrel slope, to be determined by some input
+		
+		if ( timer == 1250000) begin
+			timer = 0;
+		
+			
+		end
+		
+		
+		///Black Box Rounded Top
+		if ( bbarc <= ((bbx2-bbx1)/2)**2 ) begin //half the length of the base squared
+			mRed = bbr;
+			mGreen = bbg;
+			mBlue = bbb;
+		end
+		///Black Box Base///
+		if ( (VGA_X >= bbx1) && (VGA_X <= bbx2) && (VGA_Y >= bby1) && (VGA_Y <= bby2) ) begin
+			mRed = bbr;
+			mGreen = bbg;
+			mBlue = bbb;
+		end
+		///Black Box cannon///
+		if ( (VGA_Y + 28 >= bbbarslope*VGA_X + 250) && (VGA_Y + 22 <= bbbarslope*VGA_X + 250) && (VGA_Y <= bby1) && (bbarc <= (bbx2-bbx1)**2) ) begin 
+			mRed = 10'b111111111111;
+			mGreen = 10'b00000000000;
+			mBlue = 10'b00000000000;
+		end
+		
+		
+		
+		
+		///White box///
+		///White Box Rounded Top
+		if ( wbarc <= ((wbx2-wbx1)/2)**2 ) begin //half the length of the base squared
+			mRed = wbr;
+			mGreen = wbg;
+			mBlue = wbb;
+		end
+		///white Box Base///
+		if ( (VGA_X >= wbx1) && (VGA_X <= wbx2) && (VGA_Y >= wby1) && (VGA_Y <= wby2) ) begin
+			mRed = wbr;
+			mGreen = wbg;
+			mBlue = wbb;
+		end
+		///white Box cannon///
+		if ( (VGA_Y + 28 >= wbbarslope*VGA_X + wbx2+100) && (VGA_Y + 22 <= wbbarslope*VGA_X + wbx2+100) && (VGA_Y <= wby1) && (wbarc <= (wbx2-wbx1)**2) ) begin 
+			mRed = 10'b111111111111;
+			mGreen = 10'b00000000000;
+			mBlue = 10'b11111111111;
+		end
+		
+		
+		
+		
+		///Testing
+		if ( (VGA_Y >= wbbarslope*VGA_X + 150) && (VGA_X >= 16'd320) && (VGA_X <= cosine) && (VGA_Y >= 16'd240) && (VGA_Y <= sine) ) begin 
+			mRed = 10'b111111111111;
+			mGreen = 10'b111111111111;
+			mBlue = 10'b00000000000;
+		end
+		
+	end
+	
+	VGA_Ctrl			u9	(	//	Host Side
+							.iRed(mRed),
+							.iGreen(mGreen),
+							.iBlue(mBlue),
+							.oCurrent_X(VGA_X),
+							.oCurrent_Y(VGA_Y),
+							.oRequest(VGA_Read),
+							//	VGA Side
+							.oVGA_R(vga_r10 ),
+							.oVGA_G(vga_g10 ),
+							.oVGA_B(vga_b10 ),
+							.oVGA_HS(VGA_HS),
+							.oVGA_VS(VGA_VS),
+							.oVGA_SYNC(VGA_SYNC_N),
+							.oVGA_BLANK(VGA_BLANK_N),
+							.oVGA_CLOCK(VGA_CLK),
+							//	Control Signal
+							.iCLK(clk25),
+							.iRST_N(1)	);
+endmodule
+
+module	VGA_Ctrl	(	//	Host Side
+						iRed,
+						iGreen,
+						iBlue,
+						oCurrent_X,
+						oCurrent_Y,
+						oAddress,
+						oRequest,
+						//	VGA Side
+						oVGA_R,
+						oVGA_G,
+						oVGA_B,
+						oVGA_HS,
+						oVGA_VS,
+						oVGA_SYNC,
+						oVGA_BLANK,
+						oVGA_CLOCK,
+						//	Control Signal
+						iCLK,
+						iRST_N	);
+	//	Host Side
+	input		[9:0]	iRed;
+	input		[9:0]	iGreen;
+	input		[9:0]	iBlue;
+	output		[21:0]	oAddress;
+	output		[10:0]	oCurrent_X;
+	output		[10:0]	oCurrent_Y;
+	output				oRequest;
+	//	VGA Side
+	output		[9:0]	oVGA_R;
+	output		[9:0]	oVGA_G;
+	output		[9:0]	oVGA_B;
+	output	reg			oVGA_HS;
+	output	reg			oVGA_VS;
+	output				oVGA_SYNC;
+	output				oVGA_BLANK;
+	output				oVGA_CLOCK;
+	//	Control Signal
+	input				iCLK;
+	input				iRST_N;	
+	//	Internal Registers
+	reg			[10:0]	H_Cont;
+	reg			[10:0]	V_Cont;
+	////////////////////////////////////////////////////////////
+	//	Horizontal	Parameter
+	parameter	H_FRONT	=	16;
+	parameter	H_SYNC	=	96;
+	parameter	H_BACK	=	48;
+	parameter	H_ACT	=	640;
+	parameter	H_BLANK	=	H_FRONT+H_SYNC+H_BACK;
+	parameter	H_TOTAL	=	H_FRONT+H_SYNC+H_BACK+H_ACT;
+	////////////////////////////////////////////////////////////
+	//	Vertical Parameter
+	parameter	V_FRONT	=	11;
+	parameter	V_SYNC	=	2;
+	parameter	V_BACK	=	31;
+	parameter	V_ACT	=	480;
+	parameter	V_BLANK	=	V_FRONT+V_SYNC+V_BACK;
+	parameter	V_TOTAL	=	V_FRONT+V_SYNC+V_BACK+V_ACT;
+	////////////////////////////////////////////////////////////
+	assign	oVGA_SYNC	=	1'b1;			//	This pin is unused.
+	assign	oVGA_BLANK	=	~((H_Cont<H_BLANK)||(V_Cont<V_BLANK));
+	assign	oVGA_CLOCK	=	~iCLK;
+	assign	oVGA_R		=	iRed;
+	assign	oVGA_G		=	iGreen;
+	assign	oVGA_B		=	iBlue;
+	assign	oAddress	=	oCurrent_Y*H_ACT+oCurrent_X;
+	assign	oRequest	=	((H_Cont>=H_BLANK && H_Cont<H_TOTAL)	&&
+							 (V_Cont>=V_BLANK && V_Cont<V_TOTAL));
+	assign	oCurrent_X	=	(H_Cont>=H_BLANK)	?	H_Cont-H_BLANK	:	11'h0	;
+	assign	oCurrent_Y	=	(V_Cont>=V_BLANK)	?	V_Cont-V_BLANK	:	11'h0	;
+
+	//	Horizontal Generator: Refer to the pixel clock
+	always@(posedge iCLK or negedge iRST_N)
+	begin
+		if(!iRST_N)
+		begin
+			H_Cont		<=	0;
+			oVGA_HS		<=	1;
+		end
+		else
+		begin
+			if(H_Cont<H_TOTAL)
+			H_Cont	<=	H_Cont+1'b1;
+			else
+			H_Cont	<=	0;
+			//	Horizontal Sync
+			if(H_Cont==H_FRONT-1)			//	Front porch end
+			oVGA_HS	<=	1'b0;
+			if(H_Cont==H_FRONT+H_SYNC-1)	//	Sync pulse end
+			oVGA_HS	<=	1'b1;
+		end
+	end
+
+	//	Vertical Generator: Refer to the horizontal sync
+	always@(posedge oVGA_HS or negedge iRST_N)
+	begin
+		if(!iRST_N)
+		begin
+			V_Cont		<=	0;
+			oVGA_VS		<=	1;
+		end
+		else
+		begin
+			if(V_Cont<V_TOTAL)
+			V_Cont	<=	V_Cont+1'b1;
+			else
+			V_Cont	<=	0;
+			//	Vertical Sync
+			if(V_Cont==V_FRONT-1)			//	Front porch end
+			oVGA_VS	<=	1'b0;
+			if(V_Cont==V_FRONT+V_SYNC-1)	//	Sync pulse end
+			oVGA_VS	<=	1'b1;
+		end
+	end
+
+endmodule
